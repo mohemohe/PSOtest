@@ -1,2 +1,7 @@
 c:\users\mohem_000\documents\visual studio 2013\Projects\PSOtest\PSOtest\bin\Debug\PSOtest.exe.config
 C:\Users\mohem_000\_git\PSOtest\PSOtest\bin\Debug\PSOtest.exe.config
+C:\Users\mohem_000\_git\PSOtest\PSOtest\obj\Debug\PSOtest.csprojResolveAssemblyReference.cache
+C:\Users\mohem_000\_git\PSOtest\PSOtest\bin\Debug\PSOtest.exe
+C:\Users\mohem_000\_git\PSOtest\PSOtest\bin\Debug\PSOtest.pdb
+C:\Users\mohem_000\_git\PSOtest\PSOtest\obj\Debug\PSOtest.exe
+C:\Users\mohem_000\_git\PSOtest\PSOtest\obj\Debug\PSOtest.pdb
