@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PSOtest
@@ -46,28 +47,26 @@ namespace PSOtest
             }
         }
 
-        const double _maxSpeed = 2.0;
-        const double _minSpeed = -_maxSpeed;
-        const int _maxLoop = 100;
-        const double _moment = 0.8;
+        const int _maxLoop = 100000;
 
         const double _stageWidth = 10.0;
         const double _stageHeight = 10.0;
 
         static Position _globalBestPosition;
+        static List<Particle> _particleList;
 
         static void Main(string[] args)
         {
             // 初期化
-            var particleList = new List<Particle>();
+            _particleList = new List<Particle>();
             for (var i = 0; i < 100; i++)
             {
-                particleList.Add(InitParticle());
+                _particleList.Add(InitializeParticle());
             }
 
             // 最初の全体のベスポジを設定
-            _globalBestPosition = particleList[0].currentPosition;
-            foreach (var particle in particleList)
+            _globalBestPosition = _particleList[0].currentPosition;
+            foreach (var particle in _particleList)
             {
                 if (CalcFitness(particle.currentPosition) < CalcFitness(_globalBestPosition))
                 {
@@ -75,24 +74,69 @@ namespace PSOtest
                 }
             }
 
+            var firstBestPosition = _globalBestPosition;
+            
+            for (var i = 0; i < _maxLoop; i++)
+            {
+                if (i % 100 == 0)
+                {
+                    //Console.Clear();
+                    //Console.WriteLine(firstBestPosition.x + ", " + firstBestPosition.y);
+                    //Console.WriteLine(i + " / " + _maxLoop);
+                    Console.WriteLine(_globalBestPosition.x + ", " + _globalBestPosition.y + ", " + CalcFitness(_globalBestPosition));
+                    //Thread.Sleep(500);
+                }
+                PSO();
+            }
 
+            //Console.Clear();
+            //Console.WriteLine(firstBestPosition.x + ", " + firstBestPosition.y);
+            Console.WriteLine(_globalBestPosition.x + ", " + _globalBestPosition.y);
         }
 
         static void PSO()
         {
-            
+            for (var i = 0; i < _particleList.ToArray().Length; i++)
+            {
+                UpdatePosition(ref _particleList[i].currentPosition, _particleList[i].velocity);
+            }
+
+            for (var i = 0; i < _particleList.ToArray().Length; i++)
+            {
+                if (CalcFitness(_particleList[i].currentPosition) < CalcFitness(_particleList[i].personalBestPosition))
+                {
+                    _particleList[i].personalBestPosition = _particleList[i].currentPosition;
+                }
+            }
+
+            foreach (var particle in _particleList)
+            {
+                if (CalcFitness(particle.currentPosition) < CalcFitness(_globalBestPosition))
+                {
+                    _globalBestPosition = particle.currentPosition;
+                }
+            }
+
+            for (var i = 0; i < _particleList.ToArray().Length; i++)
+            {
+                UpdateVelocity(ref _particleList[i].velocity, 
+                               _particleList[i].currentPosition, 
+                               _particleList[i].personalBestPosition, 
+                               _globalBestPosition);
+            }
         }
 
+        static Random rand = new Random();
         static Particle InitializeParticle()
         {
-            var rand = new Random();
+            
             Position position = new Position(
-                rand.Next((int)_stageWidth * 100) / 100 * 2 - _stageWidth / 2,
-                rand.Next((int)_stageHeight * 100) / 100 * 2 - _stageHeight / 2
+                rand.NextDouble() * _stageWidth,
+                rand.NextDouble() * _stageHeight
             );
             Velocity velocity = new Velocity(
-                rand.NextDouble() * 2,
-                rand.NextDouble() * 2
+                rand.NextDouble(),
+                rand.NextDouble()
             );
 
             return new Particle(position, velocity);
@@ -100,24 +144,27 @@ namespace PSOtest
 
         static double CalcFitness(Position position)
         {
-            return Math.Pow(position.x + position.y, 2);
+            return Math.Abs(position.x) + Math.Abs(position.y);
         }
 
-        static void updatePosition(ref Position position, Velocity velocity)
+        static void UpdatePosition(ref Position position, Velocity velocity)
         {
             position.x += velocity.x;
             position.y += velocity.y;
         }
 
-        static void updateVelocity(ref Velocity velocity, Position currentPosition, Position personalBestPosition, Position globalBestPosition)
+        static void UpdateVelocity(ref Velocity velocity, Position currentPosition, Position personalBestPosition, Position globalBestPosition)
         {
-            var rand = new Random();
-            velocity.x = _moment * velocity.x + 
-                          2 * rand.NextDouble() * (personalBestPosition.x - currentPosition.x) + 
-                          2 * rand.NextDouble() * (globalBestPosition.x - currentPosition.x);
-            velocity.y = _moment * velocity.y +
-                          2 * rand.NextDouble() * (personalBestPosition.y - currentPosition.y) +
-                          2 * rand.NextDouble() * (globalBestPosition.y - currentPosition.y);
+            var randX = rand.NextDouble();
+            var randY = rand.NextDouble();
+            velocity.x = 0.8 * velocity.x +
+                          2.0 * randX * (personalBestPosition.x - currentPosition.x) +
+                          2.0 * randY * (globalBestPosition.x - currentPosition.x);
+            
+            velocity.y = 0.8 * velocity.y +
+                          2.0 * randX * (personalBestPosition.y - currentPosition.y) +
+                          2.0 * randY * (globalBestPosition.y - currentPosition.y);
+
         }
     }
 }
