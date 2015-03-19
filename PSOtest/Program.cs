@@ -12,6 +12,12 @@ namespace PSOtest
         {
             Position position;
             Velocity velocity;
+
+            public Particle(Position position, Velocity velocity)
+            {
+                this.position = position;
+                this.velocity = velocity;
+            }
         }
         
         const double _maxSpeed = 2.0;
@@ -39,7 +45,7 @@ namespace PSOtest
             public double x;
             public double y;
 
-            public Position(double x, double y)
+            public Velocity(double x, double y)
             {
                 this.x = x;
                 this.y = y;
@@ -52,7 +58,7 @@ namespace PSOtest
             var particleList = new List<Particle>();
             for (var i = 0; i < 100; i++)
             {
-                particleList.Add(InitParticle);
+                particleList.Add(InitParticle());
             }
 
 
@@ -66,7 +72,16 @@ namespace PSOtest
         static Particle InitParticle()
         {
             var rand = new Random();
-            Position position = Position{x = };
+            Position position = Position(
+                rand.Next(stageWidth * 100) / 100 * 2 - stageWidth / 2,
+                rand.Next(stageHeight * 100) / 100 * 2 - stageHeight / 2
+            );
+            Velocity velocity = Velocity(
+                rand.NextDouble() * 2,
+                rand.NextDouble() * 2
+            );
+
+            return new Particle{position = position, velocity = velocity};
         }
 
         static void updatePosition(ref Position position, Velocity velocity)
