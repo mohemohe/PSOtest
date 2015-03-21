@@ -61,11 +61,11 @@ namespace PSOtest
 
 		static void Main(string[] args)
 		{
-            //// start debug
-            //var test = 0.00000001053928425;
-            //Console.WriteLine(CalcFitness(new Position(test, test)));
-            //Console.ReadLine();
-            //// end debug
+			//// start debug
+			//var test = 0.00000001053928425;
+			//Console.WriteLine(CalcFitness(new Position(test, test)));
+			//Console.ReadLine();
+			//// end debug
 			
 
 
@@ -96,7 +96,7 @@ namespace PSOtest
 				{
 					Console.Clear();
 					//Console.WriteLine(firstBestPosition.x + ", " + firstBestPosition.y);
-                    OutputConsole(i, sw.Elapsed);
+					OutputConsole(i, sw.Elapsed);
 					//Thread.Sleep(500);
 				}
 
