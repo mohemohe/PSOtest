@@ -19,7 +19,6 @@ namespace PSOtest
 		private const double StageWidth = 256.0;
 		private const double StageHeight = StageWidth;
 
-		private static readonly Random _random = new Random();
 		private static readonly List<Particle> _particleList = new List<Particle>();
 		private static Position _globalBestPosition { get; set; }
 
@@ -35,6 +34,7 @@ namespace PSOtest
 
 			// 初期化 
 			// リストの排他制御がそれなりに重いので粒子が少ない場合はシングルスレッドで初期化する
+			Console.WriteLine("Initializing...");
 			if (Particles <= 100000)
 			{
 				for (var i = 0; i < Particles; i++)
@@ -55,6 +55,7 @@ namespace PSOtest
 				});
 			}
 
+			// 初期化したランダムな粒子から現在の準最適な位置を保持する
 			var minFitnessIndex = 0;
 			for (var i = 0; i < _particleList.Count; i++)
 			{
@@ -65,9 +66,11 @@ namespace PSOtest
 			}
 			_globalBestPosition = _particleList[minFitnessIndex].CurrentPosition;
 
+
 			var sw = new Stopwatch();
 			sw.Start();
 
+			// 関数最小化のループ
 			for (var i = 0; i < MaxLoop; i++)
 			{
 				if (i % 100 == 0)
@@ -76,6 +79,7 @@ namespace PSOtest
 					OutputConsole(i, sw.Elapsed);
 				}
 
+                // == 0.0 は嫌な予感がする
 				if (CalcFitness(_globalBestPosition) < Double.Epsilon)
 				{
 					sw.Stop();
@@ -90,6 +94,11 @@ namespace PSOtest
 			}
 		}
 
+        /// <summary>
+        /// 進捗表示用
+        /// </summary>
+        /// <param name="loop"></param>
+        /// <param name="elapsedTime"></param>
 		static void OutputConsole(int loop, TimeSpan elapsedTime)
 		{
 			var str = new StringBuilder();
@@ -107,6 +116,9 @@ namespace PSOtest
 			Console.WriteLine(str);
 		}
 
+        /// <summary>
+        /// 粒子群最適化のキモ
+        /// </summary>
 		static void PSO()
 		{
 			Parallel.For(0, _particleList.Count, i =>
@@ -131,7 +143,7 @@ namespace PSOtest
 
 			Parallel.For(0, _particleList.Count, i =>
 			{
-				UpdateVelocityMT(ref _particleList[i].Velocity,
+				UpdateVelocity(ref _particleList[i].Velocity,
 									 _particleList[i].CurrentPosition,
 									 _particleList[i].PersonalBestPosition,
 									 _globalBestPosition);
@@ -139,20 +151,30 @@ namespace PSOtest
 		}
 
 		
+        /// <summary>
+        /// 粒子をランダムに初期化する
+        /// </summary>
+        /// <returns></returns>
 		static Particle InitializeParticle()
 		{
+            var rand = ThreadSafeRandom.Random();
 			var position = new Position(
-				(_random.NextDouble() - 0.5) * 2 * StageWidth,
-				(_random.NextDouble() - 0.5) * 2 * StageHeight
+				(rand.NextDouble() - 0.5) * 2 * StageWidth,
+                (rand.NextDouble() - 0.5) * 2 * StageHeight
 			);
 			var velocity = new Velocity(
-				_random.NextDouble(),
-				_random.NextDouble()
+                rand.NextDouble(),
+                rand.NextDouble()
 			);
 
 			return new Particle(position, velocity);
 		}
 
+        /// <summary>
+        /// 適応度を計算する
+        /// </summary>
+        /// <param name="position"></param>
+        /// <returns></returns>
 		static double CalcFitness(Position position)
 		{
 			const int type = 0;
@@ -160,40 +182,49 @@ namespace PSOtest
 			switch (type)
 			{
 				case 1:
-					return TestFunctions.Griewank(new double[] { position.X, position.Y });
+					return TestFunctions.Rastrigin(new double[] { position.X, position.Y });
 				case 2:
 					return TestFunctions.Rosenbrock(new double[] { position.X, position.Y });
+				case 3:
+                    return TestFunctions.Griewank(new double[] { position.X, position.Y });
+				case 4:
+                    return TestFunctions.Ridge(new double[] { position.X, position.Y });
+				case 5:
+                    return TestFunctions.Schwefel(new double[] { position.X, position.Y });
 				default:
 					return TestFunctions.Test00(new double[] {position.X, position.Y});
 			}
 		}
 
+        /// <summary>
+        /// 適応度を更新する
+        /// </summary>
+        /// <param name="currentFittness"></param>
+        /// <param name="position"></param>
 		static void UpdateFitness(ref double currentFittness, Position position)
 		{
 			currentFittness = CalcFitness(position);
 		}
 
+        /// <summary>
+        /// 位置を更新する
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="velocity"></param>
 		static void UpdatePosition(ref Position position, Velocity velocity)
 		{
 			position.X += velocity.X;
 			position.Y += velocity.Y;
 		}
 
+        /// <summary>
+        /// 速さを更新する
+        /// </summary>
+        /// <param name="velocity"></param>
+        /// <param name="currentPosition"></param>
+        /// <param name="personalBestPosition"></param>
+        /// <param name="globalBestPosition"></param>
 		static void UpdateVelocity(ref Velocity velocity, Position currentPosition, Position personalBestPosition, Position globalBestPosition)
-		{
-			var randX = _random.NextDouble();
-			var randY = _random.NextDouble();
-			velocity.X = 0.8 * velocity.X +
-						 2.0 * randX * (personalBestPosition.X - currentPosition.X) +
-						 2.0 * randY * (globalBestPosition.X - currentPosition.X);
-			
-			velocity.Y = 0.8 * velocity.Y +
-						 2.0 * randX * (personalBestPosition.Y - currentPosition.Y) +
-						 2.0 * randY * (globalBestPosition.Y - currentPosition.Y);
-
-		}
-
-		static void UpdateVelocityMT(ref Velocity velocity, Position currentPosition, Position personalBestPosition, Position globalBestPosition)
 		{
 			var rand = ThreadSafeRandom.Random();
 			var randX = rand.NextDouble();
