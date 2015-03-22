@@ -1,5 +1,4 @@
 ﻿using System;
-using System.CodeDom;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -7,57 +6,22 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using PSOtest.Types;
+
+
 
 namespace PSOtest
 {
 	class Program
 	{
-		class Particle
-		{
-			public Position currentPosition;
-			public Position personalBestPosition;
-			public Velocity velocity;
-			public double currentFittness;
+		private const int Particles = 100000; 
+		private const int MaxLoop = Int32.MaxValue;
+		private const double StageWidth = 256.0;
+		private const double StageHeight = StageWidth;
 
-			public Particle(Position position, Velocity velocity)
-			{
-				this.currentPosition = position;
-				this.personalBestPosition = position;
-				this.velocity = velocity;
-			}
-		}
-
-		class Position
-		{
-			public double x;
-			public double y;
-
-			public Position(double x, double y)
-			{
-				this.x = x;
-				this.y = y;
-			}
-		}
-
-		class Velocity
-		{
-			public double x;
-			public double y;
-
-			public Velocity(double x, double y)
-			{
-				this.x = x;
-				this.y = y;
-			}
-		}
-
-		const int _maxLoop = Int32.MaxValue;
-
-		const double _stageWidth = 100.0;
-		const double _stageHeight = 100.0;
-
-		private static Position _globalBestPosition;
-		private static List<Particle> _particleList;
+		private static readonly Random _random = new Random();
+		private static readonly List<Particle> _particleList = new List<Particle>();
+		private static Position _globalBestPosition { get; set; }
 
 		static void Main(string[] args)
 		{
@@ -69,208 +33,179 @@ namespace PSOtest
 			
 
 
-			// 初期化
-			_particleList = new List<Particle>();
-			for (var i = 0; i < 10000; i++)
+			// 初期化 
+			// リストの排他制御がそれなりに重いので粒子が少ない場合はシングルスレッドで初期化する
+			if (Particles <= 100000)
 			{
-				_particleList.Add(InitializeParticle());
-			}
-
-			// 最初の全体のベスポジを設定
-			_globalBestPosition = _particleList[0].currentPosition;
-			foreach (var particle in _particleList)
-			{
-				if (CalcFitness(particle.currentPosition) < CalcFitness(_globalBestPosition))
+				for (var i = 0; i < Particles; i++)
 				{
-					_globalBestPosition = particle.currentPosition;
+					_particleList.Add(InitializeParticle());
+					UpdateFitness(ref _particleList[i].CurrentFittness, _particleList[i].CurrentPosition);
 				}
 			}
+			else
+			{
+				Parallel.For(0, Particles, i =>
+				{
+					lock (_particleList) _particleList.Add(InitializeParticle());
+				});
+				Parallel.For(0, Particles, i =>
+				{
+					UpdateFitness(ref _particleList[i].CurrentFittness, _particleList[i].CurrentPosition);
+				});
+			}
+
+			var minFitnessIndex = 0;
+			for (var i = 0; i < _particleList.Count; i++)
+			{
+				if (_particleList[i].CurrentFittness < _particleList[minFitnessIndex].CurrentFittness)
+				{
+					minFitnessIndex = i;
+				}
+			}
+			_globalBestPosition = _particleList[minFitnessIndex].CurrentPosition;
 
 			var sw = new Stopwatch();
-
 			sw.Start();
 
-			for (var i = 0; i < _maxLoop; i++)
+			for (var i = 0; i < MaxLoop; i++)
 			{
-				if (i % 1000 == 0)
+				if (i % 100 == 0)
 				{
 					Console.Clear();
-					//Console.WriteLine(firstBestPosition.x + ", " + firstBestPosition.y);
 					OutputConsole(i, sw.Elapsed);
-					//Thread.Sleep(500);
 				}
 
-				if (Double.Equals(CalcFitness(_globalBestPosition), 0.0))
-				//if (CalcFitness(_globalBestPosition) <= Double.Epsilon)
+				if (CalcFitness(_globalBestPosition) < Double.Epsilon)
 				{
 					sw.Stop();
+
 					Console.Clear();
 					OutputConsole(i, sw.Elapsed);
-					break;
+
+					return;
 				}
 
 				PSO();
 			}
-
-			//Console.Clear();
-			//Console.WriteLine(_globalBestPosition.x + "\t\t" + _globalBestPosition.y + "\t\t" + CalcFitness(_globalBestPosition));
 		}
 
 		static void OutputConsole(int loop, TimeSpan elapsedTime)
 		{
-			Console.WriteLine("現在の最適なX座標" + "\t\t" + "現在の最適なY座標" + "\t\t" + "(0,0)との誤差");
-			Console.WriteLine(_globalBestPosition.x + "\t\t" + _globalBestPosition.y + "\t\t" + CalcFitness(_globalBestPosition));
-			Console.WriteLine();
-			Console.WriteLine("ループ回数\t" + loop);
-			Console.WriteLine("経過時間\t" + elapsedTime);
+			var str = new StringBuilder();
+			str.AppendLine("現在の最適なX座標" + "\t\t" + 
+						   "現在の最適なY座標" + "\t\t" +
+						   "評価関数の出力");
+			str.AppendLine(_globalBestPosition.X.ToString().PadRight(20) + "\t\t" +
+						   _globalBestPosition.Y.ToString().PadRight(20) + "\t\t" +
+						   CalcFitness(_globalBestPosition).ToString().PadRight(20));
+			str.AppendLine();
+			str.AppendLine("粒子数\t\t" + Particles);
+			str.AppendLine("ループ回数\t" + loop);
+			str.AppendLine("経過時間\t" + elapsedTime);
+
+			Console.WriteLine(str);
 		}
 
 		static void PSO()
 		{
-
 			Parallel.For(0, _particleList.Count, i =>
 			{
-				UpdatePosition(ref _particleList[i].currentPosition, _particleList[i].velocity);
-				UpdateFitness(ref _particleList[i].currentFittness, ref _particleList[i].currentPosition);
+				UpdatePosition(ref _particleList[i].CurrentPosition, _particleList[i].Velocity);
+				UpdateFitness(ref _particleList[i].CurrentFittness, _particleList[i].CurrentPosition);
 			});
 
 			var minFitnessIndex = 0;
 			for (var i = 0; i < _particleList.Count; i++)
 			{
-				if (_particleList[i].currentFittness < _particleList[minFitnessIndex].currentFittness)
+				if (_particleList[i].CurrentFittness < _particleList[minFitnessIndex].CurrentFittness)
 				{
 					minFitnessIndex = i;
 				}
 			}
 
-			if (_particleList[minFitnessIndex].currentFittness <= CalcFitness(_globalBestPosition))
+			if (_particleList[minFitnessIndex].CurrentFittness < CalcFitness(_globalBestPosition))
 			{
-				_globalBestPosition = _particleList[minFitnessIndex].currentPosition;
+				_globalBestPosition = _particleList[minFitnessIndex].CurrentPosition;
 			}
 
-			// マルチスレッド化したら計算がおかしくなった
-			//for (var i = 0; i < _particleList.Count; i++)
-			//{
-			//    UpdateVelocity(ref _particleList[i].velocity,
-			//                   _particleList[i].currentPosition,
-			//                   _particleList[i].personalBestPosition,
-			//                   _globalBestPosition);
-			//}
-
-			// Rand がスレッドセーフじゃなかっただけだった
 			Parallel.For(0, _particleList.Count, i =>
 			{
-				UpdateVelocityMT(ref _particleList[i].velocity,
-								 _particleList[i].currentPosition,
-								 _particleList[i].personalBestPosition,
-								 _globalBestPosition);
+				UpdateVelocityMT(ref _particleList[i].Velocity,
+									 _particleList[i].CurrentPosition,
+									 _particleList[i].PersonalBestPosition,
+									 _globalBestPosition);
 			});
 		}
 
-		static Random rand = new Random();
+		
 		static Particle InitializeParticle()
 		{
-			
-			Position position = new Position(
-				(rand.NextDouble() - 0.5) * 2 * _stageWidth,
-				(rand.NextDouble() - 0.5) * 2 * _stageHeight
+			var position = new Position(
+				(_random.NextDouble() - 0.5) * 2 * StageWidth,
+				(_random.NextDouble() - 0.5) * 2 * StageHeight
 			);
-			Velocity velocity = new Velocity(
-				rand.NextDouble(),
-				rand.NextDouble()
+			var velocity = new Velocity(
+				_random.NextDouble(),
+				_random.NextDouble()
 			);
 
 			return new Particle(position, velocity);
 		}
 
-		static void UpdateFitness(ref double currentFittness, ref Position position)
+		static double CalcFitness(Position position)
+		{
+			const int type = 0;
+
+			switch (type)
+			{
+				case 1:
+					return TestFunctions.Griewank(new double[] { position.X, position.Y });
+				case 2:
+					return TestFunctions.Rosenbrock(new double[] { position.X, position.Y });
+				default:
+					return TestFunctions.Test00(new double[] {position.X, position.Y});
+			}
+		}
+
+		static void UpdateFitness(ref double currentFittness, Position position)
 		{
 			currentFittness = CalcFitness(position);
 		}
 
-		static double CalcFitness(Position position)
-		{
-			return Math.Abs(position.x) + Math.Abs(position.y);
-
-			//return Math.Pow(position.x, 2) + Math.Pow(position.y, 2) - 1;
-
-			// Griewank
-			//return Griewank(new double[] { position.x, position.y });
-		}
-
-		static double Griewank(double[] positions)
-		{
-			double sum = 1.0, val = 1.0;
-
-			for (int i = 0; i < positions.Length; i++)
-			{
-				//double Val = (double)i * 0.1357 / (double)positions.Length + positions[i];
-
-				double Val = positions[i];
-
-				sum += ((Val * Val) / (double)4000.0);
-				val *= Math.Cos(Val / (double)(i + 1));
-			}
-
-			return sum - val;
-		}
-
-		static double Rosenbrock(double[] Vals)
-		{
-			double Num = Vals.Length;
-			double sum = 0.0;
-
-			for(int i=0; i<Num-1; i++) 
-			{
-				double Val1 = (double)i     * 0.1357 / (double)Num + Vals[i];
-				double Val2 = (double)(i+1) * 0.1357 / (double)Num + Vals[i+1];
-
-				sum += (  100.0 * (Val2 - Val1*Val1) * (Val2 - Val1*Val1)  +  (1.0 - Val1) * (1.0 - Val1)  );
-			}
-
-			return sum;
-		}
-
 		static void UpdatePosition(ref Position position, Velocity velocity)
 		{
-			position.x += velocity.x;
-			position.y += velocity.y;
+			position.X += velocity.X;
+			position.Y += velocity.Y;
 		}
 
 		static void UpdateVelocity(ref Velocity velocity, Position currentPosition, Position personalBestPosition, Position globalBestPosition)
 		{
-			var randX = rand.NextDouble();
-			var randY = rand.NextDouble();
-			velocity.x = 0.8 * velocity.x +
-						 2.0 * randX * (personalBestPosition.x - currentPosition.x) +
-						 2.0 * randY * (globalBestPosition.x - currentPosition.x);
+			var randX = _random.NextDouble();
+			var randY = _random.NextDouble();
+			velocity.X = 0.8 * velocity.X +
+						 2.0 * randX * (personalBestPosition.X - currentPosition.X) +
+						 2.0 * randY * (globalBestPosition.X - currentPosition.X);
 			
-			velocity.y = 0.8 * velocity.y +
-						 2.0 * randX * (personalBestPosition.y - currentPosition.y) +
-						 2.0 * randY * (globalBestPosition.y - currentPosition.y);
+			velocity.Y = 0.8 * velocity.Y +
+						 2.0 * randX * (personalBestPosition.Y - currentPosition.Y) +
+						 2.0 * randY * (globalBestPosition.Y - currentPosition.Y);
 
 		}
 
-		private static int seed = Environment.TickCount;
-		private static ThreadLocal<Random> randomWrapper = new ThreadLocal<Random>(() =>
-			new Random(Interlocked.Increment(ref seed)));
-
 		static void UpdateVelocityMT(ref Velocity velocity, Position currentPosition, Position personalBestPosition, Position globalBestPosition)
 		{
-			using (var rng = new RNGCryptoServiceProvider())
-			{
-				var rand = randomWrapper.Value;
-				var randX = rand.NextDouble();
-				var randY = rand.NextDouble();
-				velocity.x = 0.8 * velocity.x +
-							 2.0 * randX * (personalBestPosition.x - currentPosition.x) +
-							 2.0 * randY * (globalBestPosition.x - currentPosition.x);
+			var rand = ThreadSafeRandom.Random();
+			var randX = rand.NextDouble();
+			var randY = rand.NextDouble();
 
-				velocity.y = 0.8 * velocity.y +
-							 2.0 * randX * (personalBestPosition.y - currentPosition.y) +
-							 2.0 * randY * (globalBestPosition.y - currentPosition.y);
-			}
+			velocity.X = 0.8 * velocity.X +
+						 2.0 * randX * (personalBestPosition.X - currentPosition.X) +
+						 2.0 * randY * (globalBestPosition.X - currentPosition.X);
 
+			velocity.Y = 0.8 * velocity.Y +
+						 2.0 * randX * (personalBestPosition.Y - currentPosition.Y) +
+						 2.0 * randY * (globalBestPosition.Y - currentPosition.Y);
 		}
 	}
 }
