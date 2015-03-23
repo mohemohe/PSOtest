@@ -77,11 +77,12 @@ namespace PSOtest
 
 				var Val = positions[i];
 
-				sum += (Val * Val / 4000.0);
-				val *= Math.Cos(Val / (i + 1.0));
+				sum += ((Val * Val) / 4000.0);
+				val *= Math.Cos(Val / Math.Sqrt(i + 1));
 			}
 
 			return sum - val;
+		    //return ((sum*sum) - (val*val))/(sum + val);
 		}
 
 		/// <summary>

@@ -13,9 +13,9 @@ namespace PSOtest
 {
     internal static class Program
     {
-        private const int Particles = 100000;
+        private const int Particles = 1000;
         private const int MaxLoop = Int32.MaxValue;
-        private const double StageWidth = 256.0;
+        private const double StageWidth = 32.0;
         private const double StageHeight = StageWidth;
 
         private static readonly List<Particle> ParticleList = new List<Particle>();
@@ -24,11 +24,11 @@ namespace PSOtest
         // ReSharper disable once UnusedParameter.Local
         private static void Main(string[] args)
         {
-            //// start debug
-            //var test = 0.00000001053928425;
-            //Console.WriteLine(CalcFitness(new Position(test, test)));
-            //Console.ReadLine();
-            //// end debug
+            // start debug
+            var test = 0.00000001053928425;
+            Console.WriteLine(CalcFitness(new Position(test, test)));
+            Console.ReadLine();
+            // end debug
 
             // 初期化
             // リストの排他制御がそれなりに重いので粒子が少ない場合はシングルスレッドで初期化する
@@ -169,7 +169,7 @@ namespace PSOtest
         /// <returns></returns>
         private static double CalcFitness(Position position)
         {
-            const int type = 0;
+            const int type = 3;
 
             switch (type)
             {
