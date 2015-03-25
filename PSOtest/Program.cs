@@ -49,11 +49,12 @@ namespace PSOtest
                 {
                     lock (ParticleList) ParticleList.Add(InitializeParticle());
                 });
-                Parallel.For(0, Particles, i =>
-                {
-                    UpdateFitness(ref ParticleList[i].CurrentFittness, ParticleList[i].CurrentPosition);
-                });
             }
+
+            Parallel.For(0, Particles, i =>
+            {
+                UpdateFitness(ref ParticleList[i].CurrentFittness, ParticleList[i].CurrentPosition);
+            });
 
             // 初期化したランダムな粒子から現在の準最適な位置を保持する
             var minFitnessIndex = 0;
