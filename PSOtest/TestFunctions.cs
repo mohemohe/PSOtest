@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+
 // ReSharper disable InconsistentNaming
 // ReSharper disable RedundantCast
 
@@ -53,8 +55,11 @@ namespace PSOtest
 
 			for (int i = 0; i < positions.Length - 1; i++)
 			{
-				double Val1 = (double)i * 0.1357 / (double)positions.Length + positions[i];
-				double Val2 = (double)(i + 1) * 0.1357 / (double)positions.Length + positions[i + 1];
+				//double Val1 = (double)i * 0.1357 / (double)positions.Length + positions[i];
+				//double Val2 = (double)(i + 1) * 0.1357 / (double)positions.Length + positions[i + 1];
+
+				double Val1 = positions[i];
+				double Val2 = positions[i + 1];
 
 				sum += (100.0 * (Val2 - Val1 * Val1) * (Val2 - Val1 * Val1) + (1.0 - Val1) * (1.0 - Val1));
 			}
@@ -77,8 +82,8 @@ namespace PSOtest
 
 				var Val = positions[i];
 
-				sum += (Val * Val / 4000.0);
-				val *= Math.Cos(Val / (i + 1.0));
+				sum += ((Val * Val) / 4000.0);
+				val *= Math.Cos(Val / Math.Sqrt(i + 1));
 			}
 
 			return sum - val;

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 // ReSharper disable HeuristicUnreachableCode
 // ReSharper disable RedundantExplicitArrayCreation
@@ -13,9 +14,9 @@ namespace PSOtest
 {
     internal static class Program
     {
-        private const int Particles = 100000;
+        private const int Particles = 1000;
         private const int MaxLoop = Int32.MaxValue;
-        private const double StageWidth = 256.0;
+        private const double StageWidth = 32.0;
         private const double StageHeight = StageWidth;
 
         private static readonly List<Particle> ParticleList = new List<Particle>();
@@ -25,8 +26,8 @@ namespace PSOtest
         private static void Main(string[] args)
         {
             //// start debug
-            //var test = 0.00000001053928425;
-            //Console.WriteLine(CalcFitness(new Position(test, test)));
+            //var test = 0.0000000105392843;
+            //Console.WriteLine(Math.Cos(0.0000000105392843));
             //Console.ReadLine();
             //// end debug
 
@@ -44,9 +45,14 @@ namespace PSOtest
             }
             else
             {
-                Parallel.For(0, Particles, i => { lock (ParticleList) ParticleList.Add(InitializeParticle()); });
-                Parallel.For(0, Particles,
-                    i => { UpdateFitness(ref ParticleList[i].CurrentFittness, ParticleList[i].CurrentPosition); });
+                Parallel.For(0, Particles, i =>
+                {
+                    lock (ParticleList) ParticleList.Add(InitializeParticle());
+                });
+                Parallel.For(0, Particles, i =>
+                {
+                    UpdateFitness(ref ParticleList[i].CurrentFittness, ParticleList[i].CurrentPosition);
+                });
             }
 
             // 初期化したランダムな粒子から現在の準最適な位置を保持する
@@ -66,14 +72,14 @@ namespace PSOtest
             // 関数最小化のループ
             for (var i = 0; i < MaxLoop; i++)
             {
-                if (i%100 == 0)
+                if (i%1== 0)
                 {
                     Console.Clear();
                     OutputConsole(i, sw.Elapsed);
                 }
 
                 // == 0.0 は嫌な予感がする
-                if (CalcFitness(GlobalBestPosition) < Double.Epsilon)
+                if (Math.Abs(CalcFitness(GlobalBestPosition)) < Double.Epsilon)
                 {
                     sw.Stop();
 
@@ -100,7 +106,7 @@ namespace PSOtest
                            "評価関数の出力");
             str.AppendLine(GlobalBestPosition.X.ToString().PadRight(20) + "\t\t" +
                            GlobalBestPosition.Y.ToString().PadRight(20) + "\t\t" +
-                           CalcFitness(GlobalBestPosition).ToString().PadRight(20));
+                           CalcFitness(GlobalBestPosition));
             str.AppendLine();
             str.AppendLine("粒子数\t\t" + Particles);
             str.AppendLine("ループ回数\t" + loop);
@@ -118,6 +124,12 @@ namespace PSOtest
             {
                 UpdatePosition(ref ParticleList[i].CurrentPosition, ParticleList[i].Velocity);
                 UpdateFitness(ref ParticleList[i].CurrentFittness, ParticleList[i].CurrentPosition);
+
+                if (ParticleList[(int)i].CurrentFittness < CalcFitness(ParticleList[i].PersonalBestPosition))
+                {
+                    UpdatePosition(ref ParticleList[i].PersonalBestPosition, ParticleList[i].CurrentPosition);
+                }
+
             });
 
             var minFitnessIndex = 0;
@@ -128,10 +140,9 @@ namespace PSOtest
                     minFitnessIndex = i;
                 }
             }
-
             if (ParticleList[minFitnessIndex].CurrentFittness < CalcFitness(GlobalBestPosition))
             {
-                GlobalBestPosition = ParticleList[minFitnessIndex].CurrentPosition;
+                UpdatePosition(GlobalBestPosition, ParticleList[minFitnessIndex].CurrentPosition);
             }
 
             Parallel.For(0, ParticleList.Count, i =>
@@ -169,27 +180,27 @@ namespace PSOtest
         /// <returns></returns>
         private static double CalcFitness(Position position)
         {
-            const int type = 0;
+            const int type = 2;
 
             switch (type)
             {
                 case 1:
-                    return TestFunctions.Rastrigin(new double[] {position.X, position.Y});
+                    return TestFunctions.Rastrigin(position.ToArray());
 
                 case 2:
-                    return TestFunctions.Rosenbrock(new double[] {position.X, position.Y});
+                    return TestFunctions.Rosenbrock(position.ToArray());
 
                 case 3:
-                    return TestFunctions.Griewank(new double[] {position.X, position.Y});
+                    return TestFunctions.Griewank(position.ToArray());
 
                 case 4:
-                    return TestFunctions.Ridge(new double[] {position.X, position.Y});
+                    return TestFunctions.Ridge(position.ToArray());
 
                 case 5:
-                    return TestFunctions.Schwefel(new double[] {position.X, position.Y});
+                    return TestFunctions.Schwefel(position.ToArray());
 
                 default:
-                    return TestFunctions.Test00(new double[] {position.X, position.Y});
+                    return TestFunctions.Test00(position.ToArray());
             }
         }
 
@@ -213,6 +224,28 @@ namespace PSOtest
         {
             position.X += velocity.X;
             position.Y += velocity.Y;
+        }
+
+        /// <summary>
+        /// 位置を更新する
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="newPosition"></param>
+        private static void UpdatePosition(Position position, Position newPosition)
+        {
+            position.X = newPosition.X;
+            position.Y = newPosition.Y;
+        }
+
+        /// <summary>
+        /// 位置を更新する
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="newPosition"></param>
+        private static void UpdatePosition(ref Position position, Position newPosition)
+        {
+            position.X = newPosition.X;
+            position.Y = newPosition.Y;
         }
 
         /// <summary>

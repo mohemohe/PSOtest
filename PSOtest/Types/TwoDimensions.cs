@@ -15,5 +15,10 @@
             this.X = x;
             this.Y = y;
         }
+
+        public double[] ToArray()
+        {
+            return new double[] { this.X, this.Y };
+        }
     }
 }
