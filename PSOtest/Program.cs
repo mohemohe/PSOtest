@@ -25,11 +25,13 @@ namespace PSOtest
         // ReSharper disable once UnusedParameter.Local
         private static void Main(string[] args)
         {
-            //// start debug
-            //var test = 0.0000000105392843;
-            //Console.WriteLine(Math.Cos(0.0000000105392843));
-            //Console.ReadLine();
-            //// end debug
+            // start debug
+            var test1 = new BigDecimal("-3.0000000105392843");
+            Console.WriteLine(test1.ToString());
+            var test2 = new BigDecimal("4.0000000105392843");
+            Console.WriteLine(BigDecimal.Add(test1, test2).ToString());
+            Console.ReadLine();
+            // end debug
 
             // 初期化
             // リストの排他制御がそれなりに重いので粒子が少ない場合はシングルスレッドで初期化する
