@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+
 // ReSharper disable InconsistentNaming
 // ReSharper disable RedundantCast
 
@@ -69,21 +71,35 @@ namespace PSOtest
 		/// <returns></returns>
 		public static double Griewank(double[] positions)
 		{
-			double sum = 1.0, val = 1.0;
+			double sum = 0.0;
+			double add = 1.0;
 
 			for (int i = 0; i < positions.Length; i++)
 			{
-				//double Val = (double)i * 0.1357 / (double)positions.Length + positions[i];
-
-				var Val = positions[i];
-
-				sum += ((Val * Val) / 4000.0);
-				val *= Math.Cos(Val / Math.Sqrt(i + 1));
+			    sum += Math.Pow(positions[i], 2)/4000.0;
+				add *= Math.Cos(positions[i]/Math.Sqrt(i + 1));
 			}
 
-			return sum - val;
-		    //return ((sum*sum) - (val*val))/(sum + val);
+			return sum - add + 1.0;
+			//return ((sum*sum) - (val*val))/(sum + val);
 		}
+		//public static double Griewank(double[] positions)
+		//{
+		//    double sum = 1.0, val = 1.0;
+
+		//    for (int i = 0; i < positions.Length; i++)
+		//    {
+		//        double Val = (double)i * 0.1357 / (double)positions.Length + positions[i];
+
+		//        var Val = positions[i];
+
+		//        sum += ((Val * Val) / 4000.0);
+		//        val *= Math.Cos(Val / Math.Sqrt(i + 1));
+		//    }
+
+		//    return sum - val;
+		//    return ((sum*sum) - (val*val))/(sum + val);
+		//}
 
 		/// <summary>
 		/// 要素が全て0のとき、最小値0を取る
