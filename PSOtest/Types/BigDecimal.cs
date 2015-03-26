@@ -12,6 +12,11 @@ namespace PSOtest.Types
     {
         private const int dSize = 256;
 
+        /// <summary>
+        /// 0.0を表します。このフィールドは定数です。
+        /// </summary>
+        public static readonly BigDecimal Zero = new BigDecimal(0);
+
         public BigInteger Value { get; private set; }
         public int DecimalIndex { get; private set; }
 
@@ -123,6 +128,26 @@ namespace PSOtest.Types
             return Div(a, b);
         }
 
+        public static bool operator ==(BigDecimal a, BigDecimal b)
+        {
+            return (a.Value == b.Value && a.DecimalIndex == b.DecimalIndex);
+        }
+
+        public static bool operator !=(BigDecimal a, BigDecimal b)
+        {
+            return (a.Value != b.Value || a.DecimalIndex != b.DecimalIndex);
+        }
+
+        public static BigDecimal operator ++(BigDecimal a)
+        {
+            return new BigDecimal(a.Value + 1, a.DecimalIndex);
+        }
+
+        public static BigDecimal operator --(BigDecimal a)
+        {
+            return new BigDecimal(a.Value - 1, a.DecimalIndex);
+        }
+
         #endregion operators
 
         #region helper methods
@@ -210,6 +235,12 @@ namespace PSOtest.Types
             return new BigDecimal(a.Value * b.Value, a.DecimalIndex + b.DecimalIndex);
         }
 
+        /// <summary>
+        /// 非常に計算コストが重いので乗法の使用を推奨
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
         public static BigDecimal Div(BigDecimal a, BigDecimal b)
         {
             int indexLength;
@@ -227,16 +258,37 @@ namespace PSOtest.Types
             var mod = a.Value; 
             var i = new BigInteger(0);
 
-            while (mod - b.Value > 0)
+            while (mod - b.Value >= 0)
             {
                 mod = mod - b.Value;
                 i++;
             }
 
-            // TODO: 余りまで求めた　小数点以下を求める
-            var d = mod;
+            var d = "";
+            var index = 0;
+            mod = BigInteger.Multiply(mod, 10);
+            while(index < dSize)
+            {
+                var k = 0;
+                if (mod == 0)
+                {
+                    break;
+                }
+                if (mod > b.Value)
+                {
+                    
+                    while (mod - b.Value > 0)
+                    {
+                        mod = mod - b.Value;
+                        k++;
+                    }
+                }
+                d += k.ToString();
+                mod = BigInteger.Multiply(mod, 10);
+                index++;
+            }
 
-            return new BigDecimal(ParseToBigInteger(i.ToString() + d.ToString()), indexLength);
+            return new BigDecimal(ParseToBigInteger(i.ToString() + d.ToString()), index);
         }
 
         #endregion static methods
