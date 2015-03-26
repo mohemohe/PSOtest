@@ -269,7 +269,7 @@ namespace PSOtest.Types
             mod = BigInteger.Multiply(mod, 10);
             while(index < dSize)
             {
-                var k = 0;
+                var k = new BigInteger(0);
                 if (mod == 0)
                 {
                     break;
