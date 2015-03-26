@@ -10,12 +10,42 @@ namespace PSOtest.Types
 {
     class BigDecimal
     {
-        private const int dSize = 256;
+        private static int _dSize = 5;
+        public static int dSize
+        {
+            get
+            {
+                return _dSize + 1;
+            }
+            private set
+            {
+                _dSize = value;
+            }
+        }
+
+        #region const
 
         /// <summary>
         /// 0.0を表します。このフィールドは定数です。
         /// </summary>
         public static readonly BigDecimal Zero = new BigDecimal(0);
+
+        /// <summary>
+        /// -1.0を表します。このフィールドは定数です。
+        /// </summary>
+        public static readonly BigDecimal MinusOne = new BigDecimal(-1);
+
+        /// <summary>
+        /// 1.0を表します。このフィールドは定数です。
+        /// </summary>
+        public static readonly BigDecimal One = new BigDecimal(1);
+
+        /// <summary>
+        /// 0.0より大きい最小の BigDecimal を表します。このフィールドは定数です。
+        /// </summary>
+        public static BigDecimal Epsilon = new BigDecimal(new BigInteger(1), dSize - 1);
+
+        #endregion const
 
         public BigInteger Value { get; private set; }
         public int DecimalIndex { get; private set; }
@@ -99,8 +129,17 @@ namespace PSOtest.Types
             var tmp = Value.ToString();
             if (DecimalIndex != 0)
             {
+                if (DecimalIndex > tmp.Length - 1)
+                {
+                    for (var i = 0; i < DecimalIndex; i++)
+                    {
+                        tmp = "0" + tmp;
+                    } 
+                }
+
                 tmp = tmp.Insert(tmp.Length - DecimalIndex, ".");
             }
+            
             return tmp;
         }
 
@@ -232,7 +271,14 @@ namespace PSOtest.Types
 
         public static BigDecimal Mul(BigDecimal a, BigDecimal b)
         {
-            return new BigDecimal(a.Value * b.Value, a.DecimalIndex + b.DecimalIndex);
+            var tmp = new BigDecimal(a.Value * b.Value, a.DecimalIndex + b.DecimalIndex);
+            var index = tmp.DecimalIndex;
+
+            var value = tmp.Value.ToString();
+            var length = value.Length - 1;
+            tmp = new BigDecimal(ParseToBigInteger(value.Remove(length - index + dSize)), dSize - 1);
+
+            return tmp;
         }
 
         /// <summary>
@@ -254,11 +300,11 @@ namespace PSOtest.Types
                 indexLength = a.DecimalIndex;
                 b = NormalizeDecimal(b, a.DecimalIndex);
             }
-
+            
             var mod = a.Value; 
             var i = new BigInteger(0);
 
-            while (mod - b.Value >= 0)
+            while (mod - HighPrecisionMath.Abs(b.Value) >= 0)
             {
                 mod = mod - b.Value;
                 i++;
@@ -267,19 +313,19 @@ namespace PSOtest.Types
             var d = "";
             var index = 0;
             mod = BigInteger.Multiply(mod, 10);
-            while(index < dSize)
+            while(index < dSize - 1)
             {
                 var k = new BigInteger(0);
                 if (mod == 0)
                 {
                     break;
                 }
-                if (mod > b.Value)
+                if (mod > HighPrecisionMath.Abs(b.Value))
                 {
                     
-                    while (mod - b.Value > 0)
+                    while (mod - HighPrecisionMath.Abs(b.Value) > 0)
                     {
-                        mod = mod - b.Value;
+                        mod = mod - HighPrecisionMath.Abs(b.Value);
                         k++;
                     }
                 }
